@@ -34,7 +34,8 @@ All config lives in `infra/docker/observability/`:
 | `promtail-config.yaml` | Log sources and labels |
 | `blackbox.yml` | HTTP probe definitions |
 | `rabbitmq-enabled-plugins` | Enables `rabbitmq_prometheus` plugin |
-| `metrics_token` | Bearer token for Prometheus auth (if used) |
+| `metrics_token` | Bearer token Prometheus uses to scrape the GAIA API `/metrics` endpoint |
+| `metrics_token.example` | Template — copy to `metrics_token` and fill in |
 | `grafana/provisioning/` | Auto-provisioned datasources and dashboards |
 
 ---
@@ -89,6 +90,45 @@ Datasources and dashboards are provisioned automatically from `grafana/provision
 
 ---
 
+## Metrics token
+
+Prometheus scrapes the GAIA API's `/metrics` endpoint using a bearer token. This prevents the metrics endpoint from being publicly accessible without auth.
+
+### How it works
+
+1. The API reads `METRICS_TOKEN` from its `.env` and requires it as a `Bearer` token on `GET /metrics`
+2. Prometheus reads the token from `infra/docker/observability/metrics_token` (mounted into the container at `/etc/prometheus/metrics_token`)
+3. The two values must match exactly — if they differ, Prometheus will get 401s and show the `gaia-api` scrape job as down
+
+### Setup
+
+```bash
+# 1. Generate a token
+openssl rand -hex 32
+
+# 2. Set it in the API env
+echo "METRICS_TOKEN=<your-token>" >> apps/api/.env
+
+# 3. Write it to the metrics_token file (no trailing newline, no quotes)
+echo -n "<your-token>" > infra/docker/observability/metrics_token
+```
+
+<Warning>
+  The `metrics_token` file is gitignored. It must be present on the VM for Prometheus to scrape the API. If you re-clone the repo on the VM, recreate this file from the value in Infisical.
+</Warning>
+
+### Checking scrape status
+
+In Grafana, go to **Explore → Prometheus** and run:
+
+```
+up{job="gaia-api"}
+```
+
+A value of `1` means Prometheus is successfully scraping the API. A value of `0` means auth is failing or the API is unreachable. You can also check directly in Prometheus at `http://<server-ip>:9090/targets`.
+
+---
+
 ## Log shipping with Promtail
 
 Promtail ships logs from two sources:
@@ -120,6 +160,7 @@ LOKI_BASIC_AUTH_PASSWORD=your-password
 
 Prometheus scrapes metrics from:
 
+- GAIA API (`/metrics`) — bearer token auth via `metrics_token`
 - RabbitMQ (`:15692/metrics`)
 - PostgreSQL via `postgres_exporter`
 - Redis via `redis_exporter`

@@ -24,7 +24,7 @@ Docs will be available at `http://localhost:3000`.
 
 ```
 docs.json                        # Mintlify config
-index.mdx
+introduction.mdx
 getting-started/
   prerequisites.mdx
   local-setup.mdx

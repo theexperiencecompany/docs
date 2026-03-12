@@ -66,6 +66,16 @@ apps/web/.env        ← read at Next.js build time (NEXT_PUBLIC_* vars only)
 | `DISCORD_BOT_TOKEN` | No | Required for Discord notification channel adapter |
 | `TELEGRAM_BOT_TOKEN` | No | Required for Telegram notification channel adapter |
 
+### Metrics
+
+| Variable | Required | Description |
+|---|---|---|
+| `METRICS_TOKEN` | Yes (prod) | Bearer token Prometheus uses to scrape the `/metrics` endpoint. Must match the value in `infra/docker/observability/metrics_token`. Generate: `openssl rand -hex 32` |
+
+<Note>
+  The `metrics_token` file in `infra/docker/observability/` is mounted into the Prometheus container. Its contents must exactly match `METRICS_TOKEN` in `apps/api/.env`. See [Grafana and observability](/production/grafana) for setup steps.
+</Note>
+
 ### Optional integrations
 
 | Variable | Description |
